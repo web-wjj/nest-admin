@@ -2,10 +2,11 @@ import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 
-import { CreateUserDto } from './dto/create-user.dto'
-import { UserEntity } from './user.entity'
 import { ResultData } from '../../common/utils/result'
 import { CryptoUtil } from '../../common/utils/crypto.util'
+
+import { CreateUserDto } from './dto/create-user.dto'
+import { UserEntity } from './user.entity'
 
 export class UserService {
   constructor(
@@ -22,7 +23,7 @@ export class UserService {
   async findOneByAccount(account: string): Promise<UserEntity> {
     return await this.userRepo.findOne({ account })
   }
-  // 注册
+
   async create(dto: CreateUserDto): Promise<ResultData> {
     const existing = await this.findOneByAccount(dto.account)
     if (existing) return ResultData.fail(500, '账号已存在，请调整后重新注册！')
@@ -33,6 +34,4 @@ export class UserService {
     const result = await this.userRepo.save(user)
     return ResultData.ok(result)
   }
-
-  // 登录
 }

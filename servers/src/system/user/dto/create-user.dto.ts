@@ -14,21 +14,21 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'password 不能为空' })
   password: string
 
-  @ApiProperty({ description: '手机号' })
+  @ApiProperty({ description: '手机号', required: false })
   @IsString({ message: 'phoneNum 类型错误，正确类型 string' })
   @IsPhoneNumber('CH', { message: '请输入正确的手机号' })
-  readonly phoneNum: string
+  readonly phoneNum?: string
 
-  @ApiProperty({ description: '邮箱' })
+  @ApiProperty({ description: '邮箱', required: false })
   @IsString({ message: 'email 类型错误，正确类型 string' })
   @IsEmail()
-  readonly email: string
+  readonly email?: string
 
   @ApiProperty({ description: '确认密码' })
   @IsString({ message: ' confirmPassword 类型错误，正确类型 string' })
   readonly confirmPassword: string
 
-  @ApiProperty({ description: '头像' })
+  @ApiProperty({ description: '头像', required: false })
   @IsString({ message: 'avatar 类型错误，正确类型 string' })
-  readonly avatar: string
+  readonly avatar?: string
 }

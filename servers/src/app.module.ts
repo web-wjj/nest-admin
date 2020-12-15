@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
-import configuration from './config'
+import configuration from './config/index'
+import { UserModule } from './system/user/user.module'
 
 @Module({
   imports: [
@@ -15,10 +16,13 @@ import configuration from './config'
     // 数据库
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        return { type: 'mysql', ...config.get('db.mysql') }
+        return { type: 'mysql', entities: ['dist/**/*.entity{.ts,.js}'], ...config.get('db.mysql') }
       },
     }),
+    // 模块
+    UserModule,
   ],
 })
 export class AppModule {}

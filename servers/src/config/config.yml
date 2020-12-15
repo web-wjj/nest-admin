@@ -10,6 +10,10 @@ db:
     port: 3306
     charser: 'utf8mb4'
     logger: 'advanced-console'
+    logging: true
+    multipleStatements: true
+    dropSchema: false
+    synchronize: true
 
 redis:
   host: 'localhost'
