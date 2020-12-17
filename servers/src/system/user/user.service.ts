@@ -1,19 +1,20 @@
 import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
+import { genSalt, hash, compare } from 'bcrypt'
 
 import { ResultData } from '../../common/utils/result'
-import { CryptoUtil } from '../../common/utils/crypto.util'
+
+import { UserEntity } from './user.entity'
 
 import { CreateUserDto } from './dto/create-user.dto'
-import { UserEntity } from './user.entity'
+import { classToPlain, plainToClass } from 'class-transformer'
 
 export class UserService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
     private readonly config: ConfigService,
-    private readonly cryptoUtil: CryptoUtil,
   ) {}
 
   async findOneById(id: number): Promise<UserEntity> {
@@ -24,14 +25,24 @@ export class UserService {
     return await this.userRepo.findOne({ account })
   }
 
+  // 创建
   async create(dto: CreateUserDto): Promise<ResultData> {
     const existing = await this.findOneByAccount(dto.account)
     if (existing) return ResultData.fail(500, '账号已存在，请调整后重新注册！')
     if (dto.password !== dto.confirmPassword) return ResultData.fail(500, '两次输入密码不一致，请重试')
-    dto.password = this.cryptoUtil.encryPassword(dto.password)
-    let user = new UserEntity()
-    user = { ...dto, ...user }
+    const salt = await genSalt()
+    dto.password = await hash(dto.password, salt)
+    const user = plainToClass(UserEntity, { salt, ...dto })
     const result = await this.userRepo.save(user)
-    return ResultData.ok(result)
+    return ResultData.ok(classToPlain(result))
+  }
+
+  // 登录
+  async login(account: string, password: string): Promise<ResultData> {
+    const user = await this.findOneByAccount(account)
+    if (!user) return ResultData.fail(500, '账号或密码错误')
+    const checkPassword = await compare(password, user.password)
+    if (!checkPassword) return ResultData.fail(500, '账号或密码错误')
+    return ResultData.ok(user)
   }
 }

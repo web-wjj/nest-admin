@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 import { ApiProperty } from '@nestjs/swagger'
+import { Exclude } from 'class-transformer'
 
 @Entity('sys_user')
 export class UserEntity {
@@ -7,19 +8,24 @@ export class UserEntity {
   @PrimaryGeneratedColumn()
   public id: number
 
+  @Exclude({ toPlainOnly: true }) // 输出屏蔽密码
   @Column({ type: 'varchar', length: 200, nullable: false, comment: '用户登录密码' })
   public password: string
+
+  @Exclude({ toPlainOnly: true }) // 输出屏蔽盐
+  @Column({ type: 'varchar', length: 200, nullable: false, comment: '盐' })
+  public salt: string
 
   @ApiProperty({ type: String, description: '用户登录账号' })
   @Column({ type: 'varchar', length: 32, comment: '用户登录账号' })
   public account: string
 
   @ApiProperty({ type: String, description: '手机号' })
-  @Column({ type: 'varchar', name: 'phone_num', length: 20, comment: '用户手机号码' })
+  @Column({ type: 'varchar', name: 'phone_num', default: null, length: 20, comment: '用户手机号码' })
   public phoneNum: string
 
   @ApiProperty({ type: String, description: '邮箱' })
-  @Column({ type: 'varchar', comment: '邮箱地址' })
+  @Column({ type: 'varchar', comment: '邮箱地址', default: null })
   public email: string
 
   @ApiProperty({ type: String })
