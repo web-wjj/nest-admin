@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
+import { JwtService } from '@nestjs/jwt'
 import { Repository } from 'typeorm'
 import { genSalt, hash, compare } from 'bcrypt'
 
@@ -15,6 +16,7 @@ export class UserService {
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
     private readonly config: ConfigService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async findOneById(id: number): Promise<UserEntity> {
@@ -43,6 +45,29 @@ export class UserService {
     if (!user) return ResultData.fail(500, '账号或密码错误')
     const checkPassword = await compare(password, user.password)
     if (!checkPassword) return ResultData.fail(500, '账号或密码错误')
-    return ResultData.ok(user)
+    // 生成 token
+    const data = this.createToken({ id: user.id })
+    return ResultData.ok(data)
+  }
+
+  // 查询用户列表
+
+  createToken(payload: { id: number }): Record<string, unknown> {
+    const accessToken = `Bearer ${this.jwtService.sign(payload)}`
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: this.config.get('jwt.refreshExpiresIn') })
+    return { accessToken, refreshToken }
+  }
+
+  refreshToken(id: number): string {
+    return this.jwtService.sign({ id })
+  }
+
+  verifyToker(token: string): number {
+    try {
+      const id = this.jwtService.verify(token)
+      return id
+    } catch (error) {
+      return 0
+    }
   }
 }

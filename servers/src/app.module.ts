@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 
 import configuration from './config/index'
 import { UserModule } from './system/user/user.module'
+import { AuthModule } from './system/auth/auth.module'
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { UserModule } from './system/user/user.module'
     }),
     // 模块
     UserModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
