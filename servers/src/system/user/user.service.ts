@@ -46,13 +46,21 @@ export class UserService {
     const checkPassword = await compare(password, user.password)
     if (!checkPassword) return ResultData.fail(500, '账号或密码错误')
     // 生成 token
-    const data = this.createToken({ id: user.id })
+    const data = this.genToken({ id: user.id })
     return ResultData.ok(data)
   }
 
   // 查询用户列表
+  async findList({ size = 10, page = 1, account, status }): Promise<ResultData> {
+    const where = {
+      ...(status ? { status } : null),
+      ...(account ? { account } : null),
+    }
+    const users = await this.userRepo.findAndCount({ where, order: { id: 'DESC' }, skip: size * (page - 1), take: size })
+    return ResultData.ok({ list: classToPlain(users[0]), total: users[1] })
+  }
 
-  createToken(payload: { id: number }): Record<string, unknown> {
+  genToken(payload: { id: number }): Record<string, unknown> {
     const accessToken = `Bearer ${this.jwtService.sign(payload)}`
     const refreshToken = this.jwtService.sign(payload, { expiresIn: this.config.get('jwt.refreshExpiresIn') })
     return { accessToken, refreshToken }
@@ -62,9 +70,10 @@ export class UserService {
     return this.jwtService.sign({ id })
   }
 
-  verifyToker(token: string): number {
+  verifyToken(token: string): number {
     try {
-      const id = this.jwtService.verify(token)
+      if (!token) return 0
+      const id = this.jwtService.verify(token.replace('Bearer ', ''))
       return id
     } catch (error) {
       return 0
