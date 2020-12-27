@@ -4,7 +4,7 @@ import helmet from 'helmet'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { Logger } from '@nestjs/common'
+import { Logger, ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
 async function bootstrap() {
@@ -32,6 +32,13 @@ async function bootstrap() {
   // 防止跨站请求伪造
   // 设置 csrf 保存 csrfToken
   // app.use(csurf())
+
+  // 全局验证
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+    }),
+  )
 
   // 获取配置端口
   const port = app.get(ConfigService).get<number>('app.port') || 8080

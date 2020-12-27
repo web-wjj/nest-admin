@@ -1,12 +1,14 @@
+import { ConfigModule, ConfigService } from '@nestjs/config'
 import { Module, forwardRef } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import { JwtModule } from '@nestjs/jwt'
+
+import { AuthModule } from '../auth/auth.module'
 
 import { BaseController } from './base.controller'
 import { UserEntity } from './user.entity'
 import { UserService } from './user.service'
-import { AuthModule } from '../auth/auth.module'
-import { JwtModule } from '@nestjs/jwt'
-import { ConfigModule, ConfigService } from '@nestjs/config'
+import { UserController } from './user.controller'
 
 @Module({
   imports: [
@@ -24,7 +26,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
     }),
   ],
   providers: [UserService],
-  controllers: [BaseController],
+  controllers: [BaseController, UserController],
   exports: [UserService],
 })
 export class UserModule {}

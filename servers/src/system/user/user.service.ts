@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { JwtService } from '@nestjs/jwt'
-import { Repository } from 'typeorm'
+import { Like, Repository } from 'typeorm'
 import { genSalt, hash, compare } from 'bcrypt'
 
 import { ResultData } from '../../common/utils/result'
@@ -10,6 +10,7 @@ import { UserEntity } from './user.entity'
 
 import { CreateUserDto } from './dto/create-user.dto'
 import { classToPlain, plainToClass } from 'class-transformer'
+import { FindUserListDto } from './dto/find-user-list.dto'
 
 export class UserService {
   constructor(
@@ -51,10 +52,11 @@ export class UserService {
   }
 
   // 查询用户列表
-  async findList({ size = 10, page = 1, account, status }): Promise<ResultData> {
+  async findList(dto: FindUserListDto): Promise<ResultData> {
+    const { page, size, account, status } = dto
     const where = {
       ...(status ? { status } : null),
-      ...(account ? { account } : null),
+      ...(account ? { account: Like(`%${account}%`) } : null),
     }
     const users = await this.userRepo.findAndCount({ where, order: { id: 'DESC' }, skip: size * (page - 1), take: size })
     return ResultData.ok({ list: classToPlain(users[0]), total: users[1] })

@@ -3,8 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
 import configuration from './config/index'
+
 import { UserModule } from './system/user/user.module'
 import { AuthModule } from './system/auth/auth.module'
+import { MenuModule } from './system/menu/menu.module'
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { AuthModule } from './system/auth/auth.module'
     // 模块
     UserModule,
     AuthModule,
+    MenuModule,
   ],
 })
 export class AppModule {}

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsEmail, IsNotEmpty, IsPhoneNumber, IsString, MaxLength, MinLength } from 'class-validator'
+import { IsEmail, IsMobilePhone, IsNotEmpty, IsPhoneNumber, IsString, MaxLength, MinLength } from 'class-validator'
 
 export class CreateUserDto {
   @ApiProperty({ description: '用户账号' })
@@ -16,7 +16,8 @@ export class CreateUserDto {
 
   @ApiProperty({ description: '手机号', required: false })
   @IsString({ message: 'phoneNum 类型错误，正确类型 string' })
-  @IsPhoneNumber('CH', { message: '请输入正确的手机号' })
+  @IsMobilePhone('zh-CN', { strictMode: false }, { message: '请输入正确的手机号' })
+  // @IsPhoneNumber('CH', { message: '请输入正确的手机号' })
   readonly phoneNum?: string
 
   @ApiProperty({ description: '邮箱', required: false })
