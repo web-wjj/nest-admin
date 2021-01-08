@@ -25,6 +25,7 @@ async function bootstrap() {
   const swaggerOptions = new DocumentBuilder().setTitle('nest-admin App').setDescription('nest-admin App 接口文档').setVersion('2.0.0').addBearerAuth().build()
   const document = SwaggerModule.createDocument(app, swaggerOptions)
   SwaggerModule.setup('/api/docs', app, document)
+  3
 
   // web 常用漏洞
   app.use(helmet())

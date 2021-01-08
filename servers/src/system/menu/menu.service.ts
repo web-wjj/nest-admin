@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common'
-import { Repository } from 'typeorm'
+import { getManager, Repository, Transaction } from 'typeorm'
 import { InjectRepository } from '@nestjs/typeorm'
 
 import { ResultData } from '../../common/utils/result'
@@ -7,6 +7,7 @@ import { ResultData } from '../../common/utils/result'
 import { MenuEntity } from './menu.entity'
 import { MenuPermEntity } from './menu-perm.entity'
 import { CreateMenuDto } from './dto/create-menu.dto'
+
 import { plainToClass } from 'class-transformer'
 import { UpdateMenuPermDto } from './dto/update-menu-perm.dto'
 
@@ -25,12 +26,14 @@ export class MenuService {
       const parentMenu = await this.menuRepo.findOne({ id: dto.parentId })
       if (!parentMenu) return ResultData.fail(HttpStatus.NOT_FOUND, '当前父级菜单不存在，请调整后重新添加')
     }
-    const menu = await this.menuRepo.save(plainToClass(MenuEntity, dto))
-    await this.menuPermRepo.save(
-      dto.menuPermList.map((perm) => {
-        return { menuId: menu.id, ...perm }
-      }),
-    )
+    await getManager().transaction(async (transactionalEntityManager) => {
+      const menu = await transactionalEntityManager.save(plainToClass(MenuEntity, dto))
+      await transactionalEntityManager.save(
+        dto.menuPermList.map((perm) => {
+          return { menuId: menu.id, ...perm }
+        }),
+      )
+    })
     return ResultData.ok()
   }
 
