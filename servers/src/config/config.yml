@@ -1,6 +1,6 @@
 app:
   port: 8080
-
+  swagger: true
 db:
   mysql:
     host: 'localhost'
@@ -19,7 +19,7 @@ redis:
   host: 'localhost'
   port: 6379
   db: 0
-  prifix: 'nest'
+  keyPrefix: 'nest:'
 
 jwt:
   secretkey: 'zANDwNQVFzxlfG9myPxVWAkq4iXJEPhI'

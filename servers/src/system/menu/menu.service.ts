@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common'
-import { getManager, Repository, Transaction } from 'typeorm'
+import { getManager, Repository } from 'typeorm'
 import { InjectRepository } from '@nestjs/typeorm'
+import { plainToClass } from 'class-transformer'
 
 import { ResultData } from '../../common/utils/result'
 
@@ -8,8 +9,8 @@ import { MenuEntity } from './menu.entity'
 import { MenuPermEntity } from './menu-perm.entity'
 import { CreateMenuDto } from './dto/create-menu.dto'
 
-import { plainToClass } from 'class-transformer'
 import { UpdateMenuPermDto } from './dto/update-menu-perm.dto'
+import { UpdateMenuDto } from './dto/update-menu.dto'
 
 @Injectable()
 export class MenuService {
@@ -26,14 +27,19 @@ export class MenuService {
       const parentMenu = await this.menuRepo.findOne({ id: dto.parentId })
       if (!parentMenu) return ResultData.fail(HttpStatus.NOT_FOUND, '当前父级菜单不存在，请调整后重新添加')
     }
-    await getManager().transaction(async (transactionalEntityManager) => {
-      const menu = await transactionalEntityManager.save(plainToClass(MenuEntity, dto))
-      await transactionalEntityManager.save(
-        dto.menuPermList.map((perm) => {
-          return { menuId: menu.id, ...perm }
-        }),
+    const menu = await getManager().transaction(async (transactionalEntityManager) => {
+      const menu = await transactionalEntityManager.save<MenuEntity>(plainToClass(MenuEntity, dto))
+      await transactionalEntityManager.save<MenuPermEntity>(
+        plainToClass(
+          MenuPermEntity,
+          dto.menuPermList.map((perm) => {
+            return { menuId: menu.id, ...perm }
+          }),
+        ),
       )
+      return menu
     })
+    if (!menu) return ResultData.fail(HttpStatus.INTERNAL_SERVER_ERROR, '菜单创建失败，请稍后重试')
     return ResultData.ok()
   }
 
@@ -42,24 +48,47 @@ export class MenuService {
     return ResultData.ok(menuList)
   }
 
-  async deleteMenu(id: number): Promise<ResultData> {
-    await this.menuPermRepo.delete({ menuId: id })
-    const result = await this.menuRepo.delete({ id })
-    return ResultData.ok(result, '删除成功')
-  }
-
   async findMenuPerms(menuId: number): Promise<ResultData> {
     const menuPerms = await this.menuPermRepo.find({ where: { menuId } })
     return ResultData.ok(menuPerms)
   }
 
-  async updateMenuPerm(dto: UpdateMenuPermDto): Promise<ResultData> {
-    await this.menuPermRepo.delete({ menuId: dto.menuId })
-    await this.menuPermRepo.save(
-      dto.menuPerms.map((perm) => {
-        return { menuId: dto.menuId, perm }
-      }),
-    )
+  async deleteMenu(id: number): Promise<ResultData> {
+    const existing = await this.menuRepo.findOne({ id })
+    if (!existing) return ResultData.fail(HttpStatus.NOT_FOUND, '当前菜单不存在或已删除')
+    const { affected } = await getManager().transaction(async (transactionalEntityManager) => {
+      await this.menuPermRepo.delete({ menuId: id })
+      const result = await transactionalEntityManager.delete<MenuEntity>(MenuEntity, id)
+      return result
+    })
+    if (!affected) return ResultData.fail(HttpStatus.INTERNAL_SERVER_ERROR, '菜单删除失败，请稍后重试')
     return ResultData.ok()
+  }
+
+  async updateMenu(dto: UpdateMenuDto): Promise<ResultData> {
+    const existing = await this.menuRepo.findOne({ id: dto.id })
+    if (!existing) return ResultData.fail(HttpStatus.NOT_FOUND, '当前菜单不存在或已删除')
+    const { affected } = await getManager().transaction(async (transactionalEntityManager) => {
+      return await transactionalEntityManager.update<MenuEntity>(MenuEntity, dto.id, dto)
+    })
+    if (!affected) return ResultData.fail(HttpStatus.INTERNAL_SERVER_ERROR, '当前菜单更新失败，请稍后重试')
+    return ResultData.ok()
+  }
+
+  async updateMenuPerm(dto: UpdateMenuPermDto): Promise<ResultData> {
+    const menuPerms = await getManager().transaction(async (transactionalEntityManager) => {
+      await this.menuPermRepo.delete({ menuId: dto.menuId })
+      const result = await transactionalEntityManager.save<MenuPermEntity>(
+        plainToClass(
+          MenuPermEntity,
+          dto.menuPerms.map((perm) => {
+            return { menuId: dto.menuId, perm }
+          }),
+        ),
+      )
+      return result
+    })
+    if (!menuPerms) return ResultData.fail(HttpStatus.INTERNAL_SERVER_ERROR, '菜单权限更新失败')
+    return ResultData.ok(menuPerms)
   }
 }

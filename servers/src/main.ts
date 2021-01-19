@@ -2,10 +2,11 @@ import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
 
 import { NestFactory } from '@nestjs/core'
-import { AppModule } from './app.module'
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { Logger, ValidationPipe } from '@nestjs/common'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { ConfigService } from '@nestjs/config'
+
+import { AppModule } from './app.module'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -20,15 +21,17 @@ async function bootstrap() {
 
   // 设置 api 访问前缀
   app.setGlobalPrefix('/api')
-
-  // sagger 配置
-  const swaggerOptions = new DocumentBuilder().setTitle('nest-admin App').setDescription('nest-admin App 接口文档').setVersion('2.0.0').addBearerAuth().build()
-  const document = SwaggerModule.createDocument(app, swaggerOptions)
-  SwaggerModule.setup('/api/docs', app, document)
-  3
-
-  // web 常用漏洞
+  // web 安全，防常见漏洞
   app.use(helmet())
+
+  const config = app.get(ConfigService)
+
+  // sagger 配置 获取是否显示 swagger 文档
+  if (config.get<boolean>('app.swagger')) {
+    const swaggerOptions = new DocumentBuilder().setTitle('nest-admin App').setDescription('nest-admin App 接口文档').setVersion('2.0.0').addBearerAuth().build()
+    const document = SwaggerModule.createDocument(app, swaggerOptions)
+    SwaggerModule.setup('/api/docs', app, document)
+  }
 
   // 防止跨站请求伪造
   // 设置 csrf 保存 csrfToken
@@ -40,9 +43,8 @@ async function bootstrap() {
       transform: true,
     }),
   )
-
   // 获取配置端口
-  const port = app.get(ConfigService).get<number>('app.port') || 8080
+  const port = config.get<number>('app.port') || 8080
 
   await app.listen(port)
 

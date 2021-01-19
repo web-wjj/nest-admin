@@ -1,11 +1,11 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 import { ApiProperty } from '@nestjs/swagger'
-import { Exclude } from 'class-transformer'
+import { Exclude, Expose } from 'class-transformer'
 
 @Entity('sys_user')
 export class UserEntity {
   @ApiProperty({ type: Number, description: 'id' })
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   public id: number
 
   @Exclude({ toPlainOnly: true }) // 输出屏蔽密码
@@ -21,11 +21,11 @@ export class UserEntity {
   public account: string
 
   @ApiProperty({ type: String, description: '手机号' })
-  @Column({ type: 'varchar', name: 'phone_num', default: null, length: 20, comment: '用户手机号码' })
+  @Column({ type: 'varchar', name: 'phone_num', default: '', length: 20, comment: '用户手机号码' })
   public phoneNum: string
 
   @ApiProperty({ type: String, description: '邮箱' })
-  @Column({ type: 'varchar', comment: '邮箱地址', default: null })
+  @Column({ type: 'varchar', comment: '邮箱地址', default: '' })
   public email: string
 
   @ApiProperty({ type: String })

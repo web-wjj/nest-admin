@@ -152,3 +152,244 @@ export class LoggerMiddleware implements NestMiddleware {
     }
 }
 ```
+
+你还可以和 Express 一样，只使用一个函数
+
+```
+export function LoggerMiddleware (req, res, next) {}
+```
+
+其使用也很简单
+
+```
+export class AppModule implements NextModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LogerMiddleware).forRoutes('user')
+  }
+}
+```
+
+利用 MiddlewareConsumer 来应用中间件，其中 apply 中可以添加一个或多个中间件，而 forRoutes 方法则指定哪些路由可以应用该中间件。 forRoutes 使用也很灵活，可以使用通配符，也可以指定控制器，甚至可以指定请求方法。
+
+```
+forRoutes('*') // 匹配所有路径
+forRoutes('user(12)?') // 匹配 user 和 user12
+forRoutes(UserController) // 匹配指定控制器
+forRoutes({ path: 'user',method: RequestMethod.GET }) // 匹配请求方法
+```
+
+Nest 中的 Filer 用于异常捕捉，和 Java Web 中的 Servle 区别很大。在 Nest 中，我们通过 HttpException 抛出错误，其返回的结果通常是
+
+```
+{
+  "statusCode": 401,
+  "error": "Unauthorized",
+  "message": "未授权"
+}
+```
+
+但是我们可能会想要定制自己的错误返回信息，Nest 中的 Filter 为此而生：
+
+```
+import { ExceptionFilter, Catch, HttpException, ArgumentsHost } from '@nestjs/common'
+
+@Catch(HttpException)
+export class HttpExceptionFilter implements ExceptionFilter {
+  catch(exception: HttpException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp()
+    const response = ctx.getResponse()
+    const request = ctx.getRequest()
+    const status = ctx.getStatus()
+
+    response
+      .status(status)
+      .json({
+        statusCode: status,
+        timestamp: new Date().toISOString(),
+        path: request.url
+      })
+  }
+}
+```
+这里我们定制了错误返回信息，下面我们只需绑定该 ExceptionFilter 即可，绑定的方式和层级有很多种，我们使 ``` @UseFilers ``` 即可绑定在控制器方法上
+
+```
+@Post()
+@UseFilers(new HttpExceptionFilter())
+async create (@Body() dto: CreateUserDto) {
+  throw new ForbiddenException()
+}
+```
+
+也可以绑定到模块上
+
+```
+@Module({
+  imports: [AuthModule,UserModule],
+  providers: [
+    {
+      provide: API_FILER,
+      useClass: HttpExceptionFilter
+    }
+  ]
+})
+```
+
+甚至可以绑定在全局
+
+```
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule)
+
+  app.useGlobalFilters(new HttpExceptionFilter())
+
+  await app.listen(3000)
+}
+bootstrap()
+```
+现在返回的信息就变成这样了，
+
+```
+{
+  "statusCode": 401,
+  "timestamp": "2021-01-09T15:37:22.144Z",
+  "path": '/users'
+}
+```
+
+另外你也注意到了，我们在 ``` @Catch ``` 中传入了参数 ``` HttpException  ```，这限定了我们 catch 的范围， 其实也可以不传任何异常参数，让 Filter 捕捉任何异常。
+
+Pipe 在 Nest 则常用于验证传输数据，转换传输类型，在 Pipe 中你可以使用 Schema 验证，也可以使用 class 验证。 Schema 验证可以使用 Joi 库，我更喜欢 class 验证。
+
+class 验证主要使用了 ``` class-validator ``` 和 ``` class-transformer ``` 两个库，主要思想是将传输数据转换成 DtoClass 对象， 然后根据该 DtoClass 的 meta 信息进行验证。其在 Nest 内部有集成。使用如下
+上述代码其实在 Nest 内部有集成，所以我们不用做不必要的集成， 我们接着看 Pipe 的使用，和 Filter 一样也有多种方式和层级。
+
+```
+// 在参数中
+@Post()
+async create(@Body(new ValidationPipe()) createCatDto: CreateCatDto) {
+ this.catsService.create(createCatDto)
+}
+
+// 在方法中
+@Post()
+@UsePipes(new ValidationPipe())
+async create(@Body() createCatDto: CreateCatDto) {
+ this.catsService.create(createCatDto)
+}
+
+// 在模块中
+import { Module } from '@nestjs/common'
+import { APP_PIPE } from '@nestjs/core'
+
+@Module({
+ providers: [
+   {
+     provide: APP_PIPE,
+     useClass: CustomGlobalPipe,
+   },
+ ],
+})
+export class ApplicationModule {}
+
+// 在全局应用中
+async function bootstrap() {
+ const app = await NestFactory.create(ApplicationModule)
+ app.useGlobalPipes(new ValidationPipe())
+ await app.listen(3000)
+}
+bootstrap()
+```
+
+Guard 守卫，主要用于权限控制，与 Middleware 相似，不同之处在与可以获取到当前正在访问的 Controller 或其中的方法。个人认为作者之所以这样设计就是为了从相关处理逻辑中获取元信息，从而实现基于装饰器的权限控制。
+
+```
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common'
+import { Observable } from 'rxjs'
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+ canActivate(
+   context: ExecutionContext,
+ ): boolean | Promise<boolean> | Observable<boolean> {
+   return true
+ }
+}
+```
+应用该 Guard
+
+```
+// 在Controller中
+@Controller('cats')
+@UseGuards(new RolesGuard())
+export class CatsController {}
+
+
+// 在模块中应用
+import { Module } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
+
+@Module({
+ providers: [
+   {
+     provide: APP_GUARD,
+     useClass: RolesGuard,
+   },
+ ],
+})
+export class ApplicationModule {}
+// 在全局应用中
+const app = await NestFactory.create(ApplicationModule)
+app.useGlobalGuards(new RolesGuard())
+```
+
+那么如果仅仅是这样，岂不是 Middleware 也可以实现，何必要新起一个概念？
+
+关键在于 ```ExecutionContext``` ，这个对象代表请求的上下文，你可以通过这个对象获取执行方法，执行的类等，非常强大，所以基于此我们可以做些权限认证
+
+```
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common'
+import { Observable } from 'rxjs'
+import { Reflector } from '@nestjs/core'
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+ constructor(private readonly reflector: Reflector) {}
+
+ canActivate(context: ExecutionContext): boolean {
+   const roles = this.reflector.get<string[]>('roles', context.getHandler())
+   if (!roles) {
+     return true
+   }
+   const request = context.switchToHttp().getRequest()
+   const user = request.user
+   const hasRole = () => user.roles.some((role) => roles.includes(role))
+   return user && user.roles && hasRole()
+ }
+}
+```
+请求的 user 信息，我们可以通过中间件从数据库或者从配置文件中获取。
+
+Nest 的 Interceptor （拦截器），可以在请求处理逻辑前后添加处理逻辑，相比较Guard，Interceptor同样能获取到上下文，而且利用RxJS（没学过，这个也是我学习Nest的难点，也许学Angular的同学会觉得简单点）可以对响应体做很多处理。目前的已知的用法就有：1. 响应体的数据映射 2. 执行额外操作 3. 异常处理 4. 重写流。这些操作都完全借助RxJS的能力。下面演示一个执行额外操作的例子，主要借助了tap操作符：
+
+```
+import { NestInterceptor, Injectable, Logger, ExecutionContext } from '@nestjs/common'
+import { Observable } from 'rxjs'
+import { tap } from 'rxjs/operators'
+
+@Injectable()
+export class LoggingInterceptor implements NestInterceptor {
+ private readonly logger = new Logger('LoggingInterceptor')
+ intercept(
+   context: ExecutionContext,
+   call$: Observable<any>,
+ ): Observable<any> {
+   this.logger.log('Before...')
+   const now = Date.now()
+   return call$.pipe(
+     tap(() => this.logger.log(`After...${Date.now() - now}ms`)),
+   )
+ }
+}
+```
+我们的使用拦截器的方法也和上述概念类似，有使用 @UseInteceptors ，也有使用 useGlobalInterceptors 方法的，也有在模块中使用的。
