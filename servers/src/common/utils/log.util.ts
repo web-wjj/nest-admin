@@ -97,7 +97,7 @@ Log4js.configure({
   appenders: {
     console: {
       type: 'console', // 打印到控制台
-      layout: { type: 'Love-service' }
+      layout: { type: 'nest-admin' }
     },
     access: { 
       type: 'dateFile',  // 写入文件，并按日期分类
