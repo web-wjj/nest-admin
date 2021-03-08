@@ -219,7 +219,7 @@ export class UserService {
    */
   async createToken(payload: { id: number }): Promise<Record<string, unknown>> {
     const accessToken = `Bearer ${this.jwtService.sign(payload)}`
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: this.config.get('JWT.refreshExpiresIn') })
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: this.config.get('JWT.expiresIn') })
     return { accessToken, refreshToken }
   }
 
